@@ -450,7 +450,9 @@ import Ember from 'ember';
 const { Helper: { helper }, isBlank } = Ember;
 
 export function sum(head, ...tail) {
-  return tail.reject(isBlank).reduce((acc, curr) => acc + curr, head);
+  return tail
+    .reject(isBlank)
+    .reduce((acc, curr) => acc + curr, head);
 }
 
 export default helper((values = []) => sum(...values));
@@ -470,7 +472,9 @@ const { Helper: { helper }, typeOf } = Ember;
 const isNumber = (value) => typeOf(value) === 'number';
 
 export function sum(head, ...tail) {
-  return tail.filter(isNumber).reduce((acc, curr) => acc + curr, head);
+  return tail
+    .filter(isNumber)
+    .reduce((acc, curr) => acc + curr, head);
 }
 
 export default helper((values = []) => sum(...values));
@@ -501,6 +505,52 @@ testData.forEach(({ data, expected }) => function() {
   });
 });
 ```
+
+So that's how you unit test a function. Earlier, we spoke about computed property macros. Let's see how you would test the `joinWith` macro we wrote earlier.
+
+```js
+import Ember from 'ember';
+
+const { computed, get } = Ember;
+
+export default function joinWith(separator, ...dependentKeys) {
+  return computed(...dependentKeys, function() {
+    return dependentKeys
+      .map((dependentKey) => get(this, dependentKey))
+      .join(separator);
+  });
+}
+```
+
+The first thing to note here is that since this is a computed property macro, we can't just test it like we would an ordinary function. This is because CPs are specific to `Ember.Object` which uses the `Ember.Observable` mixin. This essentially allows the KVO functionality inside of a special object. 
+
+What this means is that we need an `Ember.Object` to test our CPM against. 
+
+```js
+import Ember from 'ember';
+import joinWith from 'path/to/join-with';
+import { module, test } from 'qunit';
+
+const { Object: EmberObject, get } = Ember;
+
+module('Unit | Utility | macros/join with');
+
+test('#joinWith returns a string of values joined with a separator', function(assert) {
+  let Employee = EmberObject.extend({
+    fullName: joinWith(' ', 'firstName', 'lastName')
+  });
+  let subject = Employee.create({ firstName: 'Bill', lastName: 'Lumbergh' });
+
+  assert.equal(get(subject, 'fullName'), 'Bill Lumbergh');
+});
+
+```
+
+In the above example, we first created a new "class" that extends from a basic `Ember.Object`. This is denoted by the use of the capital first letter in `Employee`. Inside of this class, we can now use concepts we're familiar with, like injecting services, using CPs and so forth.
+
+In our test, we then instantiate an instance of the `Employee` class, giving it a first and last name. When we then `get` the `fullName` CP from `subject`, it returns the result we we expect it to. 
+
+
 
 TODO
 - [ ] needs
