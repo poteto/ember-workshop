@@ -548,24 +548,340 @@ test('#joinWith returns a string of values joined with a separator', function(as
 
 In the above example, we first created a new "class" that extends from a basic `Ember.Object`. This is denoted by the use of the capital first letter in `Employee`. Inside of this class, we can now use concepts we're familiar with, like injecting services, using CPs and so forth.
 
-In our test, we then instantiate an instance of the `Employee` class, giving it a first and last name. When we then `get` the `fullName` CP from `subject`, it returns the result we we expect it to. 
+In our test, we then instantiate an instance of the `Employee` class, giving it a first and last name. When we then `get` the `fullName` CP from `subject`, it returns the result we we expect it to.
 
-
-
-TODO
-- [ ] needs
+You can also unit test things like models, controllers and components - these will be tested without any UI, and allows you to unit test specific public methods.
 
 ### Integration tests
 
-TODO 
-- [ ] Testing UI
-- [ ] Using other helpers and components
+Unit tests are great for testing specific pieces of functionality in isolation, and they fit very well within the FP paradigm. 
+
+However in Ember, we are often concerned with testing pieces of our UI. Let's see how we can do that with component integration tests. One key thing to note is that you can also integration test helpers. Also, your entire app (minus the router) is booted, so other components and helpers can be used within your test.
+
+Here's a very basic example:
+
+```js
+import Ember from 'ember';
+import { moduleForComponent, test } from 'ember-qunit';
+import hbs from 'htmlbars-inline-precompile';
+
+const { RSVP: { resolve }, run } = Ember;
+
+moduleForComponent('add-numbers', 'Integration | Component | {{add-numbers}}', {
+  integration: true
+});
+
+test('it renders', function(assert) {
+  this.set('x', '3');
+  this.set('y', '3');
+  this.on('someAction', (x, y) => x + y);
+  this.render(hbs`
+    {{add-numbers x=x y=y someAction=someAction}}
+  `);
+
+  assert.equal(this.$('p').text().trim(), '0', 'precond - should render 0');
+  this.$('button').click();
+  assert.equal(this.$('p').text().trim(), '6', 'should render 6');
+});
+```
+
+The important thing to note about integration tests is how they differ from a unit test. Here, we need to `set` values and actions on the `test` context.
+
+Normally, when you use a component in Ember, the "context" is the template's controller from which the component is rendered. For example:
+
+```hbs
+// templates/application.hbs
+{{foo-bar myValue=myValue}}
+```
+
+```js
+// controllers/application.js
+import Ember from 'ember';
+
+const { Controller } = Ember;
+
+export default Controller.extend({
+  myValue: 'Jim Bob'
+});
+```
+
+The value `myValue` is passed along from the template's controller - the application controller. 
+
+Note that when a component is rendered inside of another component's template, that child component's controller is the parent component.
+
+So in our integration test, we render the component within the test's template - so, the component's controller is the test itself! This means that in order to pass down values, we need to set it on the test "controller" itself. To do this, all you need to use is `this.set` for values and `this.on` for actions.
+
+Another thing to note is that inside of an integration test, in order to access the DOM, you have to use `this.$(selector)`, where `selector` is an optional string selector similar to how you would select an element using jQuery.
+
+Since `this.$()` returns a jQuery-like object, you can use familiar things like the `click` event listener and so forth to trigger actions. Inside of an integration test you are essentially programmatically interacting with your UI - so try and avoid to do "unit testing" inside of it. What that means is, don't do things like get the container to access methods and so on. 
+
+If your component is hard to integration test, it is a sign that your component is not very well written and probably needs to be refactored.
+
+This is especially true when you are testing complex components that have child components that require a lot of data. This means that you'll end up having to write a lot of boilerplate in order to setup your component for testing.
+
+Luckily for us, there is a technique we can use to decouple our components from one another - dependency injection.
+
+#### Dependency injection in components
+
+Let's say you have a complex component for editing a geolocation that has multiple child components - a map, form, sidebar and so on.
+
+```hbs
+<!-- templates/application.hbs -->
+
+{{edit-location location=location}}
+```
+
+```hbs
+<!-- components/edit-location.hbs -->
+
+{{google-map 
+    lat=location.lat 
+    lng=location.lng 
+    setLatLng=(action "setLatLng")
+    setMarkerRadius=(action "setMarkerRadius")
+}}
+{{edit-location-form location=location}}
+{{location-activity location=location}}
+```
+
+If you try to test this `edit-location` component now, you'll probably have a difficult time trying to set everything up so that it can even be rendered.
+
+Thankfully, we have DI. DI is a fancy term for passing in dependencies as arguments instead of using them implicitly in our objects. Here, we're using these child components directly in the parent component's template, so we cannot "stub" them out in tests or even pass in other components to use, leading to repetition if we have subtly different variants of the `edit-location` component.
+
+Component DI is actually very simple. You can pass in a component like you would any other argument, with the minor execption that it should be wrapped with a `hash`:
+
+```hbs
+<!-- application.hbs -->
+
+{{edit-location 
+    location=location
+    ui=(hash
+      location-map=(component "google-map")
+      location-form=(component "edit-location-form")
+      location-activity=(component "location-activity"))
+}}
+```
+
+Here, we've wrapped our child components in a `ui` object (the name is not significant, I just chose something short and simple, but you can name it whatever you want). The `hash` helper in Ember basically creates an object on the fly.
+
+Now, inside of our parent component, we can use the components as if they were oridinary arguments:
+
+```hbs
+<!-- components/edit-location.hbs -->
+
+{{ui.location-map 
+    lat=location.lat 
+    lng=location.lng 
+    setLatLng=(action "setLatLng")
+    setMarkerRadius=(action "setMarkerRadius")
+}}
+{{ui.location-form location=location}}
+{{ui.location-activity location=location}}
+```
+
+Cool! Pretty simple refactor.
+
+Now, in our parent component integration test, we can register "dummy components" that do nothing that can be used in place of our child components.
+
+First, install the [`ember-test-component`](https://github.com/poteto/ember-test-component) addon:
+
+```
+ember install ember-test-component
+```
+
+Then, we need a small bit of setup:
+
+```js
+import { registerTestComponent, unregisterTestComponent } from 'my-app/tests/ember-test-component';
+
+moduleForComponent('...', {
+  integration: true,
+  beforeEach({ test: testCtx }) {
+    unregisterTestComponent(testCtx.testEnvironment);
+  }
+});
+```
+
+This ensures that our `test-component` doesn't leak to other tests. Now, in our integration test, we can register test components on the fly:
+
+```js
+test('it does something', function(assert) {
+  registerTestComponent(this);
+  this.render(hbs`
+    {{edit-location ui=(hash
+        location-map=(component "test-component")
+        location-form=(component "test-component")
+        location-activity=(component "test-component"))
+    }}
+  `);
+  // ...
+});
+```
+
+What this means is that we can write our components to be better decoupled from one another. This means that we can test our child components in isolation as well, leading to clearer tests and cleaner code.
 
 ### Acceptance tests
 
-TODO
-- [ ] Testing app flows
-- [ ] Writing regression tests
+Now finally, we get to acceptance tests. Acceptance tests test your entire application including routing. Because they tend to be run quite slowly, I don't write very many acceptance tests, instead relying more on component integration tests. However, acceptance tests are great for regression testing (tests that ensure bugs don't regress after being fixed) and making sure key app flows work as intended.
+
+Here's a basic acceptance test:
+
+```js
+import { test } from 'qunit';
+import moduleForAcceptance from 'people/tests/helpers/module-for-acceptance';
+
+moduleForAcceptance('Acceptance | login');
+
+test('visiting /login', function(assert) {
+  visit('/login');
+
+  andThen(() => assert.equal(currentURL(), '/login'));
+});
+```
+
+Acceptance tests don't look very different, but the thing to note is that you get a bunch of [test helpers](https://guides.emberjs.com/v2.9.0/testing/acceptance/#toc_test-helpers) that you can use to interact with your application. 
+
+This is in contrast to integration tests which _do not_ have these helpers - instead you interact with the DOM via `this.$()` which returns a jQuery-like object.
+
+Another important thing to note is that some interactions are going to be async. This means that you often have to wrap interactions within an `andThen` function. This helper will wait for any pending promises to be resolved before being run.
+
+For example, let's say that you have a button that saves your model. Saving is async, so we need to wait for the save promise to be resolved before we can see any updates to the UI:
+
+```js
+import { test } from 'qunit';
+import moduleForAcceptance from 'people/tests/helpers/module-for-acceptance';
+
+moduleForAcceptance('Acceptance | login');
+
+test('visiting /login', function(assert) {
+  visit('/login');
+
+  andThen(() => assert.equal(currentURL(), '/login'));
+  andThen(() => click('button'));
+  andThen(() => assert.equal(find('h1').text().trim()), 'Jim Bob');
+});
+```
+
+The `find` helper is similar to `this.$()` - it also returns a jQuery-like object.
+
+#### Mocking API responses
+
+In your acceptance tests, it is advisable / recommended that you also mock your API responses. This means that your app won't actually perform any real HTTP requests. Instead, you might use something like `pretender` or `mirage` to create fake servers that return canned JSON responses.
+
+I personally dislike `ember-cli-mirage` as it is often too heavy of a solution. However you might disagree (which is completely fine) so if you wish to use it you can check it out [here](http://www.ember-cli-mirage.com/).
+
+Under the hood, `ember-cli-mirage` uses Pretender as well. So let's see how Pretender works. 
+
+First, install the `ember-cli-pretender` addon:
+
+```
+ember install ember-cli-pretender
+```
+
+This imports `pretender` into our tests, so we can import it and use it to create a fake API. `pretender` has an `Express`-like syntax for creating a fake server.
+
+Let's set up a basic example:
+
+```js
+import Pretender from 'pretender';
+import { test } from 'qunit';
+
+import moduleForAcceptance from 'orion-ui/tests/helpers/module-for-acceptance';
+import sendResponse from 'orion-ui/tests/helpers/send-response';
+import me from '../../helpers/fixtures/me';
+
+const apiUrl = '/api/v1';
+
+moduleForAcceptance('Acceptance | recent-updates', {
+  beforeEach() {
+    this.server = new Pretender(function() {
+      this.get(`${apiUrl}/users/me`, function() {
+        return sendResponse(me);
+      });
+    });
+  },
+
+  afterEach() {
+    this.server.shutdown();
+  }
+});
+
+test('it should render user profile', function(assert) {
+  visit('/profile');
+  andThen(() => assert.equal(find(testSelector('selector', 'user-name')).text(), 'Jim Bob'));
+});
+```
+
+`sendResponse` is a simple test helper for returning responses. You can place it within your `tests/helpers` directory and then import it:
+
+```js
+const { stringify } = JSON;
+
+export default function sendResponse(data, statusCode = 200, headers = { 'Content-Type': 'application/json' }) {
+  return [statusCode, headers, stringify(data)];
+}
+```
+
+What we've done here is setup a fake server with one route: `/api/v1/users/me`. This will intercept any HTTP requests to that URL and then call that function. In our case, we are returning a canned response, which is just JSON that is exported as an object:
+
+```js
+/* jshint ignore:start */
+/* jscs:disable */
+/* Fetched on Oct 5th 2016 */
+export default {
+  "data": {
+    "id": "a711224f-cfc2-4477-a18d-bca986e2326a",
+    "type": "user",
+    "attributes": {
+      "first-name": "Lauren",
+      "last-name": "Tan",
+      "email": "laurent@netflix.com",
+      "profile-image": "https://plus.google.com/_/focus/photos/public/AIbEiAIAAABECJaxnLO5nprP4QEiC3ZjYXJkX3Bob3RvKigyMjMyNWEzZjYyYWJjNTA4YjQ1Y2QzYzI0NzFmYWNiNDllNWU5MDdlMAFmCsCSgWp7dIorpjxGmPKVVR7jSw"
+    }
+  }
+}
+/* jshint ignore:end */
+/* jscs:enable */
+```
+
+You can place this file anywhere, but we tend to place it in `tests/helpers/fixtures`, and then you can import it like you would any other module. The reason you can't just save it as JSON is that JSON is not exported, so you cannot import it using ES2015 syntax. However since JSON is a valid JavaScript object, you can just export it directly by prefixing the JSON with `export default`.
+
+This is just a basic example, but you should look at the [Pretender documentation](https://github.com/pretenderjs/pretender) for writing more advanced stuff. Try to keep it simple though! 
+
+Here is something more advanced, where we need to allow fetching single responses by `id`:
+
+```js
+import Pretender from 'pretender';
+import { test } from 'qunit';
+
+import JaQuery from 'orion-ui/tests/ember-ja-query';
+import sendResponse from '../../../helpers/send-response';
+import buyingTeamTypes from '../../../helpers/fixtures/buying-team-types';
+
+const apiUrl = '/api/v1';
+
+moduleForAcceptance('Acceptance | schedule/display/month', {
+  beforeEach() {
+    this.server = new Pretender(function() {
+      this.get(`${apiUrl}/buying_team_types/:id`, function({ params }) {
+        let { id } = params;
+        let wrapped = new JaQuery(buyingTeamTypes);
+
+        return sendResponse(wrapped.findBy('id', id));
+      });
+  },
+
+  afterEach() {
+    this.server.shutdown();
+  }
+});
+```
+
+In this example, we're using an addon called [`ember-ja-query`](https://github.com/poteto/ember-ja-query). This addon wraps a JSON-API response and then gives you query methods on top of it.
+
+Above, we've wrapped an array response of JSON-API buying team types with `ja-query`. Instead of trying to traverse through the weird JSON-API schema, we can use `ja-query` methods to find a single record from that array and return it.
+
+You can also use it to do other kinds of filtering and so forth when setting up your mock server.
 
 ## Part 3 - ember-concurrency
 
