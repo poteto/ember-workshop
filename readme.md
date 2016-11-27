@@ -885,10 +885,148 @@ You can also use it to do other kinds of filtering and so forth when setting up 
 
 ## Part 3 - ember-concurrency
 
-- [ ] Basic example of using the run loop
-- [ ] Guarding against your component being destroyed
-- [ ] Doing the same thing with ember-concurrency
-- [ ] A little bit about promises
-- [ ] What are generator functions?
-- [ ] Task concurrency
-- [ ] Cancelation 
+Dealing with concurrency and asynchrony when it comes to UI and JavaScript is never a fun exercise. It used to be done with deeply nested callbacks (aka callback hell). Thankfully, with modern JavaScript we have promises that make that slightly less terrible - however they are still a pain to deal with.
+
+You may have heard of the new `async` and `await` syntax in JS that will let us deal with promises as if they were synchronous. [`ember-concurrency`](http://ember-concurrency.com/#/docs) is an addon that provides something similar, but using ES2015 generators instead. This is because `async/await` is still a stage 3 proposal in TC39 (ie it is not officially a part of the ES spec yet), and generator functions have similar and possibly even superior semantics since there is a mechanism for cancelation.
+
+Let's look at a basic example of dealing with loading some async data in Ember today. We're probably familiar with this clever promise CP trick:
+
+```js
+import Ember from 'ember';
+
+const { Component, computed } = Ember;
+
+export default Component.extend({
+  someAsyncProperty: computed('model.asyncData.propertyName', {
+    get() {
+      return get(this, 'model.asyncData.propertyName').then((prop) => {
+        if (get(this, 'isDestroyed') || get(this, 'isDestroying')) {
+          return;
+        }
+        
+        // do stuff with `prop`
+        set(this, 'someAsyncProperty', prop);
+      });
+    },
+    set(_key, value) {
+      return value;
+    }
+  })
+});
+```
+
+What the above lets you do is to be able to `get` the `someAsyncProperty` key on the component, and have it set itself to the value of the resolved promise. Once a value is set on the CP, it then overwrites the getter so that subsequent `get`s will just retrieve the resolved value. 
+
+However, it's obvious that the above is quite error-prone and involves a lot of defensive code that makes things hard to reason about and debug. With ember-concurrency, there is a simpler way:
+
+```js
+import Ember from 'ember';
+import { task } from 'ember-concurrency';
+
+const { Component, computed } = Ember;
+
+export default Component.extend({
+  _someAsyncProperty: task(function*() {
+    let value = yield get(this, 'model.asyncData.propertyName').then((prop) => {
+      // do stuff with `prop`
+      set(this, 'someAsyncProperty', value);
+    });
+  }).on('init')
+});
+```
+
+The above example is definitely a lot cleaner to read. `yield` is a special keyword that means to stop the generator function until the promise being yielded is resolved. The best part is, you can assign it to a value directly, as if it was async.
+
+You'll note that I included the `on('init')` modifier, which as it suggests will run this function whenever a new component instance is created. You can also have the generator function run on different events using this same syntax.
+
+Now let's see exactly what this `function*` / [generator function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_Generators) is all about. 
+
+In JavaScript, an `iterator` is:
+
+> An object is an iterator when it knows how to access items from a collection one at a time, while keeping track of its current position within that sequence. In JavaScript an iterator is an object that provides a `next()` method which returns the next item in the sequence. This method returns an object with two properties: `done` and `value`.
+
+```js
+function makeIterator(array){
+  let nextIndex = 0;
+  
+  return {
+    next() {
+      return nextIndex < array.length ?
+        { value: array[nextIndex++], done: false } :
+        { done: true };
+    }
+  }
+}
+```
+
+```js
+let it = makeIterator(['yo', 'ya']);
+console.log(it.next().value); // 'yo'
+console.log(it.next().value); // 'ya'
+console.log(it.next().done);  // true
+```
+
+Generators are a simpler and less error-prone way of dealing with iterator state. Generators are special type of functions that work as a factory for iterators. A function is a generator if it contains at least one `yield` and if it also uses the `function*` syntax.
+
+```js
+function* idMaker() {
+  let index = 0;
+  while(true)
+    yield index++;
+}
+
+let gen = idMaker();
+console.log(gen.next().value); // 0
+console.log(gen.next().value); // 1
+console.log(gen.next().value); // 2
+// ...
+```
+
+In this example, `while(true)` is an infinite loop. However because it wrapped in a generator, we can `yield` each iteration and only deal with values one at a time.
+
+`ember-concurrency` takes this basic concept and extends it further, giving you nice concurrency and async primitives to work with in Ember, including cancelation. 
+
+Although generators are already a part of the ES2016 spec, they are not fully implemented by browsers and so a Babel polyfill is required. This polyfill uses the [`regenerator`](https://github.com/facebook/regenerator) polyfill written by Facebook and is automatically included when you install the `ember-concurrency` addon.
+
+#### Task syntax
+
+`ember-concurrency` has a few different ways of performing tasks. Right now you can think of these as "actions" that need to be invoked, but there is work going on in the addon to eventually support async CPs, so we will be able to clean up our code even more. For example, using async CPs you can just return the `yield` instead of having to set another value. This is coming very soon, which is great!
+
+But for now, you can mostly get by with using the `on('init')` hook for most cases. When you do want to do some async or concurrent work though, you need to `perform` the task:
+
+```js
+{
+  myGenerator: task(function*(interval) {
+    set(this, 'status', 'Gimme one second...');
+    yield timeout(interval);
+    set(this, 'status', 'Gimme one more second...');
+    yield timeout(interval);
+    set(this, 'status', "Finished!");
+  })  
+}
+
+get('myGenerator').perform(1000);
+```
+
+You can pass arguments to your generator functions like you would an ordinary function. Note the use of the `yield timeout` expressions - `timeout` is a tiny utility from `ember-concurrency` that lets you wait for a number of milliseconds before proceeding on. This can be very useful for certain scenarios like debouncing and so on.
+
+When the generator is performed, the function is called and the `status` is set accordingly. You could call this `perform` from within an action, or you could even use the `perform` helper:
+
+```hbs
+<button {{action perform myGenerator 1000}}>
+  Do it
+</button>
+```
+
+#### Task concurrency and cancelation
+
+Now you might be wondering what `ember-concurrency` can do with these primitives. The answer is that this addon will change the way you write your ember apps. Dealing with complex UI is made easier, and dealing with concurrent actions extends that even further.
+
+At this point, we'll go directly to the docs to show examples. Perhaps open up an `ember-twiddle` to do some live coding as well. 
+
+- Talk about [task modifiers](http://ember-concurrency.com/#/docs/task-concurrency)
+- Talk about [cancelation](http://ember-concurrency.com/#/docs/cancelation)
+
+#### Examples
+
+[Examples](http://ember-concurrency.com/#/docs/examples)
