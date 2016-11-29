@@ -238,8 +238,106 @@ If you use `ember-composable-helpers`, you can use the `pipe` helper to compose 
 
 This means that your actions can be much simpler instead of having 1 big action that mixes business logic with presentational logic.
 
-TODO
-- [ ] Currying?
+If there is time, talk a little bit about currying. [Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept it arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
+
+```js
+g(1)(2)(3);
+g(1)(2, 3);
+g(1, 2)(3);
+g(1, 2, 3);
+```
+
+Here is a simplified example of a curry function (it does not handle all cases properly):
+
+```js
+const curry = (f, ...args) => (f.length <= args.length) ? 
+  f(...args) : 
+  (...more) => curry(f, ...args, ...more);
+```
+
+And a simple `add` function:
+
+```js
+const add = (x, y, z) => x + y + z;
+```
+
+When `add` is curried, it now has curried capabilities:
+
+```js
+const curriedAdd = curry(add);
+
+console.log(curriedAdd(1)(2)(3)); // 6
+console.log(curriedAdd(1)(2, 3)); // 6
+console.log(curriedAdd(1, 2)(3)); // 6
+console.log(curriedAdd(1, 2, 3)); // 6
+```
+
+Explanation:
+
+`curry` is variadic and expects a function as the first argument, and an optional list of arguments to be provided to that function. This function is recursive.
+
+When writing a recursive function, the first thing you want to think of is the base case - the base case refers to the point where the recursion is "complete" and the function returns an optional value. Without a base case, your recursive function becomes an infinite loop.
+
+Let's look at the base case first:
+
+The function's length is checked (`Function.length` returns the number of arguments expected by the function), and if it is less than or equal to the length of the remaining arguments, it means that all arguments were passed in and we can simply run the function with the given arguments, i.e. `add(1, 2, 3)`.
+
+If not, we return a new variadic function. This function then calls `curry` again recursively, passing in the same function `f`, but also passing along the list of `args` as well as `more` into curry. This is a more readable version:
+
+```js
+const curry = (f, ...args) => {
+  // base case, all arguments provided
+  if (f.length <= args.length) {
+    return f(...args);
+  }
+  
+  // recursive
+  return (...more) => {
+    return curry(f, ...args, ...more);
+  };
+};
+```
+
+Currying is useful because you get easier reuse of more abstract functions, since you get to specialize. Let's look at that `add` function again. With currying, we can create very specialized functions:
+
+```js
+const curry = (f, ...args) => (f.length <= args.length) ? 
+  f(...args) : 
+  (...more) => curry(f, ...args, ...more);
+const add = (x, y, z) => x + y + z;
+
+const addOne = curry(add, 1);
+const addFiveAndThree = curry(add, 5, 3);
+
+console.log(addOne(4, 5)); // 10
+console.log(addFiveAndThree(2)); // 10
+```
+
+This is similar to the function composition we saw earlier, but instead of composing functions we are in a sense composing arguments and creating preset functions that do specific things from a more abstract function.
+
+[GIST](https://ember-twiddle.com/ad7133a47b104f77cc484e647b98b861?openFiles=templates.components.foo-bar.hbs%2C)
+
+In Ember we can do something similar with closure actions. The same `add` function, now as an action:
+
+```js
+import Ember from 'ember';
+
+const { Controller } = Ember;
+
+export default Controller.extend({
+  actions: {
+    add(x, y, z) {
+      return x + y + z;
+    }
+  }
+});
+```
+
+```hbs
+{{foo-bar addOne=(action "add" 1) addFiveAndThree=(action "add" 5 3)}}
+```
+
+We have curried the `add` action here, creating 2 new actions that are specialized, similar to the JS example above.
 
 ### CPs
 
@@ -248,7 +346,7 @@ CPs are pretty cool. They're declarative, so you can specify what a value should
 The most basic example of a CP is to to join a first and last name. Everyone has probably written a CP like this one.
 
 ```js
-const Ember from 'ember';
+import Ember from 'ember';
 
 const { Component, computed, get } = Ember; 
 
@@ -257,7 +355,7 @@ export default Component.extend({
   lastName: 'Bob',
 
   fullName: computed('firstName', 'lastName', function() {
-    return `get(this, 'firstName') get(this, 'lastName')`;
+    return `${get(this, 'firstName')} ${get(this, 'lastName')}`;
   }).readOnly()
 });
 ```
@@ -291,7 +389,7 @@ Since `map` returns an array, we can now complete the function by chaining the `
 Now, we can use this macro in multiple places without repeating ourselves:
 
 ```js
-const Ember from 'ember';
+import Ember from 'ember';
 import joinWith from 'path/to/join-with';
 
 const { Component } = Ember;
