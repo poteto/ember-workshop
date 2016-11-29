@@ -4,7 +4,7 @@ This is a workshop designed for intermediate developers who have worked on at le
 
 This document contains the notes that I am reading from / referring to during the workshop. Ideally if you use this as a basis for your own workshop, you will include interactive live coding sessions as well.
 
-## Part 1 - Basics
+## Part 1 - FP Basics
 
 ### FP in JavaScript
 
@@ -44,6 +44,8 @@ for (let i = 0; i < data.length; i++) {
 console.log(data); // [3, 6, 9]
 ```
 
+#### `Array.map`
+
 With a FP minded approach, we prefer using `map` when we need to run a function on each item in an array.
 
 ```js
@@ -67,6 +69,8 @@ console.log(result); // [6]
 ```
 
 You'll notice that I made an anonymous function and bound it to the variable `isEven`. Since functions are first class in JavaScript, I can simply pass the function into `filter`, instead of defining the anonymous function inline.
+
+#### `Array.reduce`
 
 The interesting thing about all these array methods like `map`, `filter`, `reject`, `find` and so on is that they can actually all be derived from a single method called `reduce`:
 
@@ -106,6 +110,8 @@ What this means is that `(acc, curr) => [...acc, f(curr)]` we return a new array
 
 You can even construct powerful functions with it. For example, let's look at the `pipe` function.
 
+#### The `pipe` function
+
 Let's say we have a number of math functions, like so:
 
 ```js
@@ -132,7 +138,9 @@ But who wants to read something like that, right?
 
 Well, since you can pass functions around in JavaScript, let's see what we can do better. In FP, functions can be composed. What that means is that we can create new functions from multiple other functions, also known as [function composition](https://en.wikipedia.org/wiki/Function_composition). Let's see the most basic example of this.
 
-Let's call this function `compose`. 
+#### The `compose` function
+
+Let's call this function `compose`.
 
 ```js
 const compose = (f, g) => (x) => f(g(x));
@@ -166,6 +174,8 @@ console.log(squareAndHalf(10)); // 50
 You might notice that I called the composed function `squareAndHalf`, but the arguments are passed in reverse - that is because `compose` composes functions from right to left.
 
 With that, I hope it further illustrates how functions are truly first class in JavaScript. Let's take the `compose` function example a little bit further and introduce the `pipe` function, which does function composition as well but passes from left to right.
+
+#### Implementing the `pipe` function
 
 To write this function, let's revisit the array `reduce` method:
 
@@ -245,7 +255,9 @@ If you use `ember-composable-helpers`, you can use the `pipe` helper to compose 
 
 This means that your actions can be much simpler instead of having 1 big action that mixes business logic with presentational logic.
 
-If there is time, talk a little bit about currying. [Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept it arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
+#### Currying
+
+[Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept it arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
 
 ```js
 g(1)(2)(3);
@@ -279,8 +291,6 @@ console.log(curriedAdd(1)(2, 3)); // 6
 console.log(curriedAdd(1, 2)(3)); // 6
 console.log(curriedAdd(1, 2, 3)); // 6
 ```
-
-Explanation:
 
 `curry` is variadic and expects a function as the first argument, and an optional list of arguments to be provided to that function. This function is recursive.
 
@@ -368,7 +378,11 @@ export default Component.extend({
 });
 ```
 
-Pretty simple! But how would you make something like this reusable? Enter functional programming and computed property macros:
+Pretty simple! But how would you make something like this reusable? 
+
+#### Computed property macros
+
+Enter functional programming and computed property macros:
 
 ```js
 import Ember from 'ember';
@@ -522,6 +536,8 @@ Unit tests are the simplest kind of tests in Ember. They are typically run in is
 
 Unit tests are best when you need to test some public function or method in your app against a variety of test cases. For example, let's write a unit test for the `sum` helper we wrote earlier.
 
+#### Anatomy of a unit test
+
 ```js
 import { sum } from 'path/to/sum';
 import { module, test } from 'qunit';
@@ -538,6 +554,8 @@ This is how a very basic helper test looks like. It imports the `module` and `te
 The `module` function is just a way to group our tests together with a logical name. 
 
 The `test` function is what we use to create a new test within this module. Let's write our first test.
+
+#### Testing philosophy
 
 A good unit test should always cover a variety of test cases, meaning we need to test both the happy and unhappy paths to using this function.
 
@@ -585,6 +603,8 @@ test('it ignores non-numerical values', function(assert) {
 });
 ```
 
+#### Basic TDD
+
 If we run this test now, it will fail since we have not handled this in our function. Let's update it:
 
 ```js
@@ -625,6 +645,8 @@ export default helper((values = []) => sum(...values));
 
 Now all our test cases should pass. 
 
+#### Data-driven testing
+
 Something interesting to note about tests is that you can take a data driven approach to writing them - there is nothing special about a test. It's just JavaScript. What this means is that we can parameterize our happy and unhappy cases:
 
 ```js
@@ -648,6 +670,8 @@ testData.forEach(({ data, expected }) => function() {
   });
 });
 ```
+
+#### Testing computed property macros (or anything that requires an `Ember.Object`)
 
 So that's how you unit test a function. Earlier, we spoke about computed property macros. Let's see how you would test the `joinWith` macro we wrote earlier.
 
@@ -730,6 +754,8 @@ test('it renders', function(assert) {
 
 The important thing to note about integration tests is how they differ from a unit test. Here, we need to `set` values and actions on the `test` context.
 
+#### Why do we set values and actions on the test context?
+
 Normally, when you use a component in Ember, the "context" is the template's controller from which the component is rendered. For example:
 
 ```hbs
@@ -753,6 +779,8 @@ The value `myValue` is passed along from the template's controller - the applica
 Note that when a component is rendered inside of another component's template, that child component's controller is the parent component.
 
 So in our integration test, we render the component within the test's template - so, the component's controller is the test itself! This means that in order to pass down values, we need to set it on the test "controller" itself. To do this, all you need to use is `this.set` for values and `this.on` for actions.
+
+#### `this.$()`
 
 Another thing to note is that inside of an integration test, in order to access the DOM, you have to use `this.$(selector)`, where `selector` is an optional string selector similar to how you would select an element using jQuery.
 
