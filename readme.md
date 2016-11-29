@@ -172,6 +172,7 @@ To write this function, let's revisit the array `reduce` method:
 ```js
 const pipe = (fn, ...fns) => (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
 ```
+[(source)](https://medium.com/@dtipson/functional-lenses-d1aba9e52254#.kff3l5d6j)
 
 Now, you can write create a new function by using `pipe`, which takes a bunch of functions as arguments and returns a new function:
 
@@ -260,6 +261,7 @@ const curry = (f, ...args) => (f.length <= args.length) ?
   f(...args) : 
   (...more) => curry(f, ...args, ...more);
 ```
+[(source)](https://medium.com/@dtipson/functional-lenses-d1aba9e52254#.kff3l5d6j)
 
 And a simple `add` function:
 
