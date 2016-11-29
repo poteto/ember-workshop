@@ -124,7 +124,44 @@ const result = triple(half(square(10)));
 
 But who wants to read something like that, right?
 
-Well, since you can pass functions around in JavaScript, let's see what we can do with the handy `reduce` method:
+Well, since you can pass functions around in JavaScript, let's see what we can do better. In FP, functions can be composed. What that means is that we can create new functions from multiple other functions, also known as [function composition](https://en.wikipedia.org/wiki/Function_composition). Let's see the most basic example of this.
+
+Let's call this function `compose`. 
+
+```js
+const compose = (f, g) => (x) => f(g(x));
+```
+
+This might look very terse, and it is. Let's explode it into normal ES5 syntax:
+
+```js
+var compose = function compose(f, g) {
+  return function (x) {
+    return f(g(x));
+  };
+};
+```
+
+This version might be easier to understand for those of you still new to ES2015 syntax. The `compose` function takes 2 arguments `f` and `g`. It expects that they are both functions themselves, and then returns a new function which expects one argument `x`. 
+
+That function then returns the value of `g(x)` passed into the `f` function. The way this works is that we have created a closure - even though the new function only takes 1 argument, we were able to "store" the previous function arguments and then remember it later when we do invoke it. 
+
+Let's see how we can use this:
+
+```js
+const compose = (f, g) => (x) => f(g(x));
+const square = (x) => x * x;
+const half = (x) => x / 2;
+
+const squareAndHalf = compose(half, square);
+console.log(squareAndHalf(10)); // 50
+```
+
+You might notice that I called the composed function `squareAndHalf`, but the arguments are passed in reverse - that is because `compose` composes functions from right to left.
+
+With that, I hope it further illustrates how functions are truly first class in JavaScript. Let's take the `compose` function example a little bit further and introduce the `pipe` function, which does function composition as well but passes from left to right.
+
+To write this function, let's revisit the array `reduce` method:
 
 ```js
 const pipe = (fn, ...fns) => (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
