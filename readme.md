@@ -4,6 +4,37 @@ This is a workshop designed for intermediate developers who have worked on at le
 
 This document contains the notes that I am reading from / referring to during the workshop. Ideally if you use this as a basis for your own workshop, you will include interactive live coding sessions as well.
 
+* [Part 1 - FP Basics](#part-1---fp-basics)
+  + [FP in JavaScript](#fp-in-javascript)
+    - [What is FP?](#what-is-fp-)
+    - [Examples](#examples)
+    - [`Array.map`](#-arraymap-)
+    - [`Array.reduce`](#-arrayreduce-)
+    - [The `pipe` function](#the--pipe--function)
+    - [The `compose` function](#the--compose--function)
+    - [Implementing the `pipe` function](#implementing-the--pipe--function)
+    - [Currying](#currying)
+  + [CPs](#cps)
+    - [Computed property macros](#computed-property-macros)
+  + [Helpers](#helpers)
+* [Part 2 - Testing](#part-2---testing)
+  + [Unit tests](#unit-tests)
+    - [Anatomy of a unit test](#anatomy-of-a-unit-test)
+    - [Testing philosophy](#testing-philosophy)
+    - [Basic TDD](#basic-tdd)
+    - [Data-driven testing](#data-driven-testing)
+    - [Testing computed property macros (or anything that requires an `Ember.Object`)](#testing-computed-property-macros--or-anything-that-requires-an--emberobject--)
+  + [Integration tests](#integration-tests)
+    - [Why do we set values and actions on the test context?](#why-do-we-set-values-and-actions-on-the-test-context-)
+    - [`this.$()`](#-this----)
+    - [Dependency injection in components](#dependency-injection-in-components)
+  + [Acceptance tests](#acceptance-tests)
+    - [Mocking API responses](#mocking-api-responses)
+* [Part 3 - ember-concurrency](#part-3---ember-concurrency)
+  - [Task syntax](#task-syntax)
+  - [Task concurrency and cancelation](#task-concurrency-and-cancelation)
+  - [Examples](#examples-1)
+
 ## Part 1 - FP Basics
 
 ### FP in JavaScript
@@ -1001,13 +1032,13 @@ What we've done here is setup a fake server with one route: `/api/v1/users/me`. 
 /* Fetched on Oct 5th 2016 */
 export default {
   "data": {
-    "id": "a711224f-cfc2-4477-a18d-bca986e2326a",
+    "id": "1",
     "type": "user",
     "attributes": {
-      "first-name": "Lauren",
-      "last-name": "Tan",
-      "email": "laurent@netflix.com",
-      "profile-image": "https://plus.google.com/_/focus/photos/public/AIbEiAIAAABECJaxnLO5nprP4QEiC3ZjYXJkX3Bob3RvKigyMjMyNWEzZjYyYWJjNTA4YjQ1Y2QzYzI0NzFmYWNiNDllNWU5MDdlMAFmCsCSgWp7dIorpjxGmPKVVR7jSw"
+      "first-name": "Jim",
+      "last-name": "Bob",
+      "email": "jim@bob.com",
+      "profile-image": "http://www.jimbob.com/selfie.jpg"
     }
   }
 }
