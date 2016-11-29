@@ -4,6 +4,8 @@
 
 ### FP in JavaScript
 
+Warning: MATH!
+
 #### What is FP?
   + Programming paradigm based on mathematical functions
     * Referential transparency - 1 input maps to 1 output
