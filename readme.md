@@ -1129,9 +1129,9 @@ const { Component, computed } = Ember;
 
 export default Component.extend({
   _someAsyncProperty: task(function*() {
-    let value = yield get(this, 'model.asyncData.propertyName').then((prop) => {
+    yield get(this, 'model.asyncData.propertyName').then((prop) => {
       // do stuff with `prop`
-      set(this, 'someAsyncProperty', value);
+      set(this, 'someAsyncProperty', prop);
     });
   }).on('init')
 });
