@@ -1,5 +1,9 @@
 # ember-workshop
 
+This is a workshop designed for intermediate developers who have worked on at least one large Ember app. The goal is to teach functional programming basics and to be able to use these ideas in your app.
+
+This document contains the notes that I am reading from / referring to during the workshop. Ideally if you use this as a basis for your own workshop, you will include interactive live coding sessions as well.
+
 ## Part 1 - Basics
 
 ### FP in JavaScript
