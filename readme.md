@@ -14,7 +14,7 @@ This document contains the notes that I am reading from / referring to during th
     - [The `compose` function](#the--compose--function)
     - [Implementing the `pipe` function](#implementing-the--pipe--function)
     - [Currying](#currying)
-  + [CPs](#computed-properties)
+  + [Computed Properties](#computed-properties)
     - [Computed property macros](#computed-property-macros)
   + [Helpers](#helpers)
 * [Part 2 - Testing](#part-2---testing)
