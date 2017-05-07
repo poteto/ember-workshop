@@ -288,7 +288,7 @@ This means that your actions can be much simpler instead of having 1 big action 
 
 #### Currying
 
-[Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept it arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
+[Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept its arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
 
 ```js
 g(1)(2)(3);
