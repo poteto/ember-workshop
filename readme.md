@@ -14,7 +14,7 @@ This document contains the notes that I am reading from / referring to during th
     - [The `compose` function](#the--compose--function)
     - [Implementing the `pipe` function](#implementing-the--pipe--function)
     - [Currying](#currying)
-  + [CPs](#cps)
+  + [CPs](#computed-properties)
     - [Computed property macros](#computed-property-macros)
   + [Helpers](#helpers)
 * [Part 2 - Testing](#part-2---testing)
@@ -388,7 +388,7 @@ export default Controller.extend({
 
 We have curried the `add` action here, creating 2 new actions that are specialized, similar to the JS example above.
 
-### CPs
+### Computed Properties
 
 CPs are pretty cool. They're declarative, so you can specify what a value should be when its dependent values change, much like a spreadsheet. This is in contrast to the imperative form where you would have to manually listen for changes in each e.g. input and then add the values together a la how you would do it in jQuery.
 
