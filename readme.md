@@ -6,15 +6,15 @@ This document contains the notes that I am reading from / referring to during th
 
 * [Part 1 - FP Basics](#part-1---fp-basics)
   + [FP in JavaScript](#fp-in-javascript)
-    - [What is FP?](#what-is-fp-)
+    - [What is FP?](#what-is-fp)
     - [Examples](#examples)
-    - [`Array.map`](#-arraymap-)
-    - [`Array.reduce`](#-arrayreduce-)
-    - [The `pipe` function](#the--pipe--function)
-    - [The `compose` function](#the--compose--function)
-    - [Implementing the `pipe` function](#implementing-the--pipe--function)
+    - [`Array.map`](#arraymap)
+    - [`Array.reduce`](#arrayreduce)
+    - [The `pipe` function](#the-pipe-function)
+    - [The `compose` function](#the-compose-function)
+    - [Implementing the `pipe` function](#implementing-the-pipe-function)
     - [Currying](#currying)
-  + [CPs](#cps)
+  + [Computed Properties](#computed-properties)
     - [Computed property macros](#computed-property-macros)
   + [Helpers](#helpers)
 * [Part 2 - Testing](#part-2---testing)
@@ -288,7 +288,7 @@ This means that your actions can be much simpler instead of having 1 big action 
 
 #### Currying
 
-[Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept it arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
+[Currying](https://en.wikipedia.org/wiki/Currying) is a concept in FP where you can make a function accept its arguments one at a time. For example, if function `f` is ternary (arity of 3), and we make a new curried function `g`, the following are equivalent:
 
 ```js
 g(1)(2)(3);
@@ -388,7 +388,7 @@ export default Controller.extend({
 
 We have curried the `add` action here, creating 2 new actions that are specialized, similar to the JS example above.
 
-### CPs
+### Computed Properties
 
 CPs are pretty cool. They're declarative, so you can specify what a value should be when its dependent values change, much like a spreadsheet. This is in contrast to the imperative form where you would have to manually listen for changes in each e.g. input and then add the values together a la how you would do it in jQuery.
 
