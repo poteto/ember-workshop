@@ -866,7 +866,7 @@ Component DI is actually very simple. You can pass in a component like you would
 
 Here, we've wrapped our child components in a `ui` object (the name is not significant, I just chose something short and simple, but you can name it whatever you want). The `hash` helper in Ember basically creates an object on the fly.
 
-Now, inside of our parent component, we can use the components as if they were oridinary arguments:
+Now, inside of our parent component, we can use the components as if they were ordinary arguments:
 
 ```hbs
 <!-- components/edit-location.hbs -->
